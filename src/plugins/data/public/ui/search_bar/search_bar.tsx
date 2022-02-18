@@ -572,6 +572,12 @@ class SearchBarUI extends Component<SearchBarProps, State> {
         savedQueryService={this.savedQueryService}
         onClearSavedQuery={this.props.onClearSavedQuery}
         selectedSavedQueries={this.state.finalSelectedSavedQueries}
+        onSaveFilter={(savedQueryMeta: SavedQueryMeta) =>
+          this.onSave(savedQueryMeta, false, {
+            query: '',
+            language: this.state.query!.language,
+          })
+        }
       >
         {(list) => list}
       </SavedQueryManagementComponent>

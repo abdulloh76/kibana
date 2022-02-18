@@ -110,7 +110,7 @@ const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
         id: selectedFilters[idx].id,
         relationship: selectedFilters[idx].relationship,
         subGroupId: selectedFilters[idx].subGroupId,
-        groupCount
+        groupCount,
       };
     });
 
@@ -248,9 +248,9 @@ const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
   }
 
   function renderEditFilter() {
-    let currentEditFilters = [];
+    let currentEditFilters: Filter[] = [];
     groupIds?.forEach((groupId) => {
-      const filteredFilters = props.multipleFilters.filter(filter => filter.groupId === groupId);
+      const filteredFilters = props.multipleFilters.filter((filter) => filter.groupId === groupId);
       currentEditFilters.push(...filteredFilters);
     });
 
@@ -271,6 +271,7 @@ const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
             initialAddFilterMode={undefined}
             saveFilters={props.onFilterSave}
             savedQueryService={props.savedQueryService}
+            initialLabel={currentEditFilters[0].meta.alias!}
           />
         )}
       </EuiFlexItem>

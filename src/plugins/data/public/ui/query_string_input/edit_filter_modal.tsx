@@ -58,7 +58,12 @@ import { SavedQueryMeta } from '../saved_query_form';
 
 import { IIndexPattern, IFieldType } from '../..';
 
-const tabs = [
+interface ITab {
+  type: string;
+  label: string;
+}
+
+const possibleTabs: ITab[] = [
   {
     type: 'quick_form',
     label: i18n.translate('data.filter.filterEditor.quickFormLabel', {
@@ -98,6 +103,8 @@ export function EditFilterModal({
   onRemoveFilterGroup,
   saveFilters,
   savedQueryService,
+  tabs = possibleTabs,
+  initialLabel,
 }: {
   onSubmit: (filters: Filter[]) => void;
   onMultipleFiltersSubmit: (
@@ -116,17 +123,39 @@ export function EditFilterModal({
   onRemoveFilterGroup: () => void;
   saveFilters: (savedQueryMeta: SavedQueryMeta, saveAsNew?: boolean) => Promise<void>;
   savedQueryService: SavedQueryService;
+  tabs?: ITab[];
+  initialLabel?: string;
 }) {
   const [selectedIndexPattern, setSelectedIndexPattern] = useState(
     getIndexPatternFromFilter(filter, indexPatterns)
   );
   const [addFilterMode, setAddFilterMode] = useState<string>(initialAddFilterMode ?? tabs[0].type);
-  const [customLabel, setCustomLabel] = useState<string>(filter.meta.alias || '');
-  const [queryDsl, setQueryDsl] = useState<string>(JSON.stringify(currentEditFilters?.map(filter => cleanFilter(filter)), null, 2));
-  const [localFilters, setLocalFilters] = useState<FilterGroup[]>(
-    convertFilterToFilterGroup(currentEditFilters)
+  const [customLabel, setCustomLabel] = useState<string>(initialLabel || '');
+  const [queryDsl, setQueryDsl] = useState<string>(
+    JSON.stringify(
+      currentEditFilters?.map((filter) => cleanFilter(filter)),
+      null,
+      2
+    )
   );
-  const [groupsCount, setGroupsCount] = useState<number>(currentEditFilters[currentEditFilters?.length - 1].groupCount ?? 0);
+  const [localFilters, setLocalFilters] = useState<FilterGroup[]>(
+    tabs.includes(possibleTabs[1])
+      ? convertFilterToFilterGroup(currentEditFilters)
+      : [
+          {
+            field: undefined,
+            operator: undefined,
+            value: undefined,
+            groupId: 1,
+            id: 0,
+            subGroupId: 1,
+            relationship: undefined,
+          },
+        ]
+  );
+  const [groupsCount, setGroupsCount] = useState<number>(
+    currentEditFilters[currentEditFilters?.length - 1].groupCount ?? 0
+  );
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
   const [submitDisabled, setSubmitDisabled] = useState(false);
 
@@ -150,7 +179,7 @@ export function EditFilterModal({
           id: 0,
           subGroupId: 1,
           relationship: undefined,
-          groupsCount
+          groupsCount,
         },
       ];
     }
@@ -164,7 +193,7 @@ export function EditFilterModal({
         id: convertedfilter.id,
         subGroupId: convertedfilter.subGroupId,
         relationship: convertedfilter.relationship,
-        groupsCount: convertedfilter.groupsCount
+        groupsCount: convertedfilter.groupsCount,
       };
     });
   }
@@ -239,29 +268,31 @@ export function EditFilterModal({
       return '';
     }
     return (
-      <EuiFormRow
-        fullWidth
-        display="columnCompressed"
-        className="kbnQueryBar__dataViewInput"
-        label={i18n.translate('data.filter.filterEditor.dataViewSelectLabel', {
-          defaultMessage: 'Data view',
-        })}
-      >
-        <GenericComboBox
+      tabs.includes(possibleTabs[1]) && (
+        <EuiFormRow
           fullWidth
-          compressed
-          placeholder={i18n.translate('data.filter.filterEditor.selectIndexPatternLabel', {
-            defaultMessage: 'Select an index pattern',
+          display="columnCompressed"
+          className="kbnQueryBar__dataViewInput"
+          label={i18n.translate('data.filter.filterEditor.dataViewSelectLabel', {
+            defaultMessage: 'Data view',
           })}
-          options={indexPatterns}
-          selectedOptions={selectedIndexPattern ? [selectedIndexPattern] : []}
-          getLabel={(indexPattern: IIndexPattern) => indexPattern.title}
-          onChange={onIndexPatternChange}
-          singleSelection={{ asPlainText: true }}
-          isClearable={false}
-          data-test-subj="filterIndexPatternsSelect"
-        />
-      </EuiFormRow>
+        >
+          <GenericComboBox
+            fullWidth
+            compressed
+            placeholder={i18n.translate('data.filter.filterEditor.selectIndexPatternLabel', {
+              defaultMessage: 'Select an index pattern',
+            })}
+            options={indexPatterns}
+            selectedOptions={selectedIndexPattern ? [selectedIndexPattern] : []}
+            getLabel={(indexPattern: IIndexPattern) => indexPattern.title}
+            onChange={onIndexPatternChange}
+            singleSelection={{ asPlainText: true }}
+            isClearable={false}
+            data-test-subj="filterIndexPatternsSelect"
+          />
+        </EuiFormRow>
+      )
     );
   };
 
@@ -421,12 +452,12 @@ export function EditFilterModal({
       shouldIncludeTimefilter: false,
       filters,
     };
-    if (!filter.meta.alias) {
+    if (!initialLabel) {
       // if our filters had not alias before then we save them as new fiterSet
       saveFilters(queryMetaObj, true);
     } else {
       const curQuery = savedQueries.find(
-        (existingQuery) => existingQuery.attributes.title === filter.meta.alias
+        (existingQuery) => existingQuery.attributes.title === initialLabel
       );
       saveFilters(
         {
@@ -444,7 +475,7 @@ export function EditFilterModal({
       return; // typescript validation
     }
     const alias = customLabel || null;
-    if (alias && !filter.meta.alias && isLabelDuplicated()) {
+    if (alias && !initialLabel && isLabelDuplicated()) {
       setSubmitDisabled(true);
       return;
     }
