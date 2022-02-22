@@ -16,6 +16,7 @@ import {
   cleanFilter,
   getFilterParams,
   FieldFilter,
+  buildQueryFromFilters,
 } from '@kbn/es-query';
 import {
   EuiFormRow,
@@ -93,7 +94,6 @@ export function EditFilterModal({
   onSubmit,
   onMultipleFiltersSubmit,
   onCancel,
-  applySavedQueries,
   filter,
   multipleFilters,
   currentEditFilters,
@@ -105,6 +105,7 @@ export function EditFilterModal({
   savedQueryService,
   tabs = possibleTabs,
   initialLabel,
+  filters
 }: {
   onSubmit: (filters: Filter[]) => void;
   onMultipleFiltersSubmit: (
@@ -112,7 +113,6 @@ export function EditFilterModal({
     buildFilters: Filter[],
     groupCount: number
   ) => void;
-  applySavedQueries: () => void;
   onCancel: () => void;
   filter: Filter;
   multipleFilters?: Filter[];
@@ -125,6 +125,7 @@ export function EditFilterModal({
   savedQueryService: SavedQueryService;
   tabs?: ITab[];
   initialLabel?: string;
+  filters: Filter[];
 }) {
   const [selectedIndexPattern, setSelectedIndexPattern] = useState(
     getIndexPatternFromFilter(filter, indexPatterns)
@@ -133,7 +134,12 @@ export function EditFilterModal({
   const [customLabel, setCustomLabel] = useState<string>(initialLabel || '');
   const [queryDsl, setQueryDsl] = useState<string>(
     JSON.stringify(
-      currentEditFilters?.map((filter) => cleanFilter(filter)),
+      // {
+      //   query: {
+      //     bool: buildQueryFromFilters(filters, selectedIndexPattern),
+      //   },
+      // },
+      filters.map((filter) => cleanFilter(filter)),
       null,
       2
     )
@@ -483,18 +489,20 @@ export function EditFilterModal({
     if (addFilterMode === 'query_builder') {
       const { index, disabled = false, negate = false } = filter.meta;
       const newIndex = index || indexPatterns[0].id!;
-      const body = JSON.parse(queryDsl);
-      const builtCustomFilter = buildCustomFilter(
-        newIndex,
-        body,
-        disabled,
-        negate,
-        alias,
-        $state.store
-      );
-      onSubmit([builtCustomFilter]);
+      let builtCustomFilter = [];
+      if (Array.isArray(JSON.parse(queryDsl))) {
+        builtCustomFilter = JSON.parse(queryDsl).map((query) =>
+          buildCustomFilter(newIndex, query, disabled, negate, alias, $state.store)
+        );
+      } else {
+        const body = JSON.parse(queryDsl);
+        builtCustomFilter = [
+          buildCustomFilter(newIndex, body, disabled, negate, alias, $state.store),
+        ];
+      }
+      onSubmit(builtCustomFilter);
       if (alias) {
-        onSubmitWithLabel([builtCustomFilter]);
+        onSubmitWithLabel(builtCustomFilter);
       }
     } else if (addFilterMode === 'quick_form' && selectedIndexPattern) {
       const builtFilters = localFilters.map((localFilter) => {
@@ -520,8 +528,6 @@ export function EditFilterModal({
           onSubmitWithLabel(finalFilters);
         }
       }
-    } else if (addFilterMode === 'saved_filters') {
-      applySavedQueries();
     }
   };
 
@@ -557,8 +563,8 @@ export function EditFilterModal({
               subGroup.length > 1 && groupsCount > 1
                 ? 'kbnQueryBar__filterModalSubGroups'
                 : groupsCount === 1 && subGroup.length > 1
-                ? 'kbnQueryBar__filterModalGroups'
-                : '';
+                  ? 'kbnQueryBar__filterModalGroups'
+                  : '';
             return (
               <>
                 <div className={classNames(classes)}>

@@ -204,7 +204,17 @@ class SearchBarUI extends Component<SearchBarProps, State> {
     currentProps: this.props,
     selectedSavedQueries: [],
     finalSelectedSavedQueries: [],
-    multipleFilters: this.props.filters?.length ? [...this.props.filters] : [],
+    multipleFilters: this.props.filters?.length ?
+      [...this.props.filters.map((filter: Filter, idx: number) => (
+        {
+          ...filter,
+          groupId: idx + 1,
+          id: idx,
+          subGroupId: 1,
+          relationship: undefined,
+          groupsCount: 1,
+        }))
+      ] : [],
     query: this.props.query ? { ...this.props.query } : undefined,
     dateRangeFrom: get(this.props, 'dateRangeFrom', 'now-15m'),
     dateRangeTo: get(this.props, 'dateRangeTo', 'now'),
@@ -736,7 +746,6 @@ class SearchBarUI extends Component<SearchBarProps, State> {
             editFilterMode={this.state.editFilterMode}
             savedQueryService={this.savedQueryService}
             onFilterSave={(savedQueryMeta: SavedQueryMeta, saveAsNew = false) => {
-              console.log(this.state.query);
               return this.onSave(savedQueryMeta, saveAsNew, {
                 language: this.state.query!.language,
                 query: '',
