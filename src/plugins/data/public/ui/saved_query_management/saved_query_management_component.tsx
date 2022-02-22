@@ -371,7 +371,7 @@ export function SavedQueryManagementComponent({
         <EditFilterModal
           onSubmit={() => {}}
           onMultipleFiltersSubmit={() => {}}
-          applySavedQueries={() => {}}
+          filters={savedQueryToEdit.attributes.filters!}
           onCancel={() => setIsEditModalOpen(false)}
           filter={savedQueryToEdit.attributes.filters![0]}
           currentEditFilters={savedQueryToEdit.attributes.filters!}
