@@ -260,7 +260,6 @@ export function SavedQueryManagementComponent({
       onClick: (savedQueryToEdit: SavedQuery) => {
         setIsEditModalOpen(true);
         setSavedQueryToEdit(savedQueryToEdit);
-        console.log('edit the saved filterSet', savedQueryToEdit);
       },
       isPrimary: true,
       'data-test-subj': 'action-edit',
@@ -392,7 +391,6 @@ export function SavedQueryManagementComponent({
           initialAddFilterMode="query_builder"
           saveFilters={(savedQueryMeta) => {
             setIsEditModalOpen(false);
-            debugger;
             return onSaveFilter(savedQueryMeta);
           }}
           savedQueryService={savedQueryService}
