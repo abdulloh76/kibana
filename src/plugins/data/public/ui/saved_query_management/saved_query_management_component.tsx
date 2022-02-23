@@ -117,7 +117,7 @@ export function SavedQueryManagementComponent({
     if (isOpen) {
       fetchCountAndSavedQueries();
     }
-  }, [isOpen, activePage, savedQueryService, pageSize, isEditModalOpen]);
+  }, [isOpen, activePage, savedQueryService, pageSize]);
 
   const handleTogglePopover = useCallback(
     () => setIsOpen((currentState) => !currentState),
@@ -390,6 +390,17 @@ export function SavedQueryManagementComponent({
           ]}
           initialAddFilterMode="query_builder"
           saveFilters={(savedQueryMeta) => {
+            const updatedQuery = {
+              id: savedQueryToEdit.id,
+              attributes: {
+                ...savedQueryToEdit.attributes,
+                filters: savedQueryMeta.filters,
+                title: savedQueryMeta.title,
+              },
+            };
+            const queries = savedQueries.filter((q) => q.id !== savedQueryToEdit.id);
+            queries.push(updatedQuery);
+            setSavedQueriesBySearch(queries);
             setIsEditModalOpen(false);
             return onSaveFilter(savedQueryMeta);
           }}
