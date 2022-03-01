@@ -44,6 +44,7 @@ interface Props {
   savedQueryService: SavedQueryService;
   onFilterSave: (savedQueryMeta: SavedQueryMeta, saveAsNew?: boolean) => Promise<void>;
   onFilterBadgeSave: (groupId: number, alias: string) => void;
+  filtersToEdit: Filter[];
 }
 
 const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
@@ -314,9 +315,10 @@ const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
     });
 
     const queryBuilderTab = QUERY_BUILDER;
-    const tabs = selectedSavedFiltersGroupIds.some((g) => groupIds.includes(g))
-      ? [queryBuilderTab]
-      : undefined;
+    const tabs =
+      selectedSavedFiltersGroupIds.some((g) => groupIds.includes(g)) || props.filtersToEdit.length
+        ? [queryBuilderTab]
+        : undefined;
 
     return (
       <EuiFlexItem grow={false}>
@@ -325,9 +327,11 @@ const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
             onSubmit={onEditMultipleFilters}
             onMultipleFiltersSubmit={onEditMultipleFiltersANDOR}
             onCancel={() => props.toggleEditFilterModal?.(false)}
-            filter={saerchedFilters[0]}
-            currentEditFilters={currentEditFilters}
-            filters={saerchedFilters}
+            filter={props.filtersToEdit.length ? props.filtersToEdit[0] : saerchedFilters[0]}
+            currentEditFilters={
+              props.filtersToEdit.length ? props.filtersToEdit : currentEditFilters
+            }
+            filters={props.filtersToEdit.length ? props.filtersToEdit : saerchedFilters}
             multipleFilters={props.multipleFilters}
             indexPatterns={props.indexPatterns!}
             onRemoveFilterGroup={onDeleteFilterGroup}
@@ -336,7 +340,11 @@ const FilterBarUI = React.memo(function FilterBarUI(props: Props) {
             saveFilters={props.onFilterSave}
             savedQueryService={props.savedQueryService}
             tabs={tabs}
-            initialLabel={saerchedFilters[0].meta.alias!}
+            initialLabel={
+              props.filtersToEdit.length
+                ? props.filtersToEdit[0].meta.alias!
+                : saerchedFilters[0].meta.alias!
+            }
           />
         )}
       </EuiFlexItem>

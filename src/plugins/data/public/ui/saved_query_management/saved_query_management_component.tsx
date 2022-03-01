@@ -39,8 +39,6 @@ import React, {
 import { sortBy } from 'lodash';
 import { SavedQuery, SavedQueryService, SavedQueryTimeFilter } from '../..';
 import { SavedQueryListItem } from './saved_query_list_item';
-import { EditFilterModal } from '../query_string_input/edit_filter_modal';
-import { SavedQueryMeta } from '../saved_query_form';
 
 interface TablePage {
   page: {
@@ -68,7 +66,7 @@ interface Props {
     list: ReactElement
     // search: ReactElement<EuiSelectableSearch<T>> | undefined
   ) => JSX.Element;
-  onSaveFilter: (savedQueryMeta: SavedQueryMeta) => Promise<void>;
+  onEditSavedFilter: (savedQueryToEdit: SavedQuery) => void;
 }
 
 export function SavedQueryManagementComponent({
@@ -81,7 +79,7 @@ export function SavedQueryManagementComponent({
   savedQueryService,
   selectedSavedQueries,
   children,
-  onSaveFilter,
+  onEditSavedFilter,
 }: Props) {
   const [isOpen, setIsOpen] = useState(true);
   const [savedQueries, setSavedQueries] = useState([] as SavedQuery[]);
@@ -91,8 +89,6 @@ export function SavedQueryManagementComponent({
   const [searchValue, setSearchValue] = useState('');
   const [savedQueriesBySearch, setSavedQueriesBySearch] = useState([] as SavedQuery[]);
   const [selectedQueries, setSelectedQueries] = useState(selectedSavedQueries);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [savedQueryToEdit, setSavedQueryToEdit] = useState<SavedQuery>({} as SavedQuery);
 
   const cancelPendingListingRequest = useRef<() => void>(() => {});
 
@@ -257,10 +253,7 @@ export function SavedQueryManagementComponent({
       icon: 'pencil',
       color: 'primary',
       type: 'icon',
-      onClick: (savedQueryToEdit: SavedQuery) => {
-        setIsEditModalOpen(true);
-        setSavedQueryToEdit(savedQueryToEdit);
-      },
+      onClick: onEditSavedFilter,
       isPrimary: true,
       'data-test-subj': 'action-edit',
     },
@@ -364,52 +357,7 @@ export function SavedQueryManagementComponent({
   );
 
   // NEW RETURN : Just the list
-  return (
-    <>
-      {children(savedQueries.length ? component : emptyState)}
-      {isEditModalOpen && (
-        <EditFilterModal
-          onSubmit={() => {}}
-          onMultipleFiltersSubmit={() => {}}
-          filters={savedQueryToEdit.attributes.filters!}
-          onCancel={() => setIsEditModalOpen(false)}
-          filter={savedQueryToEdit.attributes.filters![0]}
-          currentEditFilters={savedQueryToEdit.attributes.filters!}
-          indexPatterns={[]}
-          onRemoveFilterGroup={() => {
-            setIsEditModalOpen(false);
-            handleDelete(savedQueryToEdit);
-          }}
-          tabs={[
-            {
-              type: 'query_builder',
-              label: i18n.translate('data.filter.filterEditor.queryBuilderLabel', {
-                defaultMessage: 'Query builder',
-              }),
-            },
-          ]}
-          initialAddFilterMode="query_builder"
-          saveFilters={(savedQueryMeta) => {
-            const updatedQuery = {
-              id: savedQueryToEdit.id,
-              attributes: {
-                ...savedQueryToEdit.attributes,
-                filters: savedQueryMeta.filters,
-                title: savedQueryMeta.title,
-              },
-            };
-            const queries = savedQueries.filter((q) => q.id !== savedQueryToEdit.id);
-            queries.push(updatedQuery);
-            setSavedQueriesBySearch(queries);
-            setIsEditModalOpen(false);
-            return onSaveFilter(savedQueryMeta);
-          }}
-          savedQueryService={savedQueryService}
-          initialLabel={savedQueryToEdit.attributes.title}
-        />
-      )}
-    </>
-  );
+  return children(savedQueries.length ? component : emptyState);
   // OLD RETURN
   // return (
   //   <Fragment>

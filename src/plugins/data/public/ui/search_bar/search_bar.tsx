@@ -123,6 +123,7 @@ interface State {
   editFilterMode?: string;
   filtersIdsFromSavedQueries?: string[];
   overrideTimeFilterModalShow: boolean;
+  filtersToEdit: Filter[];
 }
 
 class SearchBarUI extends Component<SearchBarProps, State> {
@@ -225,6 +226,7 @@ class SearchBarUI extends Component<SearchBarProps, State> {
     editFilterMode: 'quick_form',
     filtersIdsFromSavedQueries: [],
     overrideTimeFilterModalShow: false,
+    filtersToEdit: [],
   };
 
   public isDirty = () => {
@@ -418,6 +420,14 @@ class SearchBarUI extends Component<SearchBarProps, State> {
     this.setState({ multipleFilters });
   };
 
+  public onEditSavedFilter = (savedQueryToEdit: SavedQuery) => {
+    this.setState({
+      filtersToEdit: savedQueryToEdit.attributes.filters ?? [],
+      isAddFilterModalOpen: false,
+      isEditFilterModalOpen: true,
+    });
+  };
+
   public applyTimeFilterOverrideModal = (selectedQueries?: SavedQuery[]) => {
     const queries = [...(selectedQueries || []), ...this.state.selectedSavedQueries];
     this.setState({ finalSelectedSavedQueries: queries });
@@ -574,6 +584,7 @@ class SearchBarUI extends Component<SearchBarProps, State> {
     this.setState({
       isEditFilterModalOpen: value,
       editFilterMode: editFilterMode || 'quick_form',
+      filtersToEdit: [],
     });
   };
 
@@ -594,12 +605,7 @@ class SearchBarUI extends Component<SearchBarProps, State> {
         savedQueryService={this.savedQueryService}
         onClearSavedQuery={this.props.onClearSavedQuery}
         selectedSavedQueries={this.state.finalSelectedSavedQueries}
-        onSaveFilter={(savedQueryMeta: SavedQueryMeta) =>
-          this.onSave(savedQueryMeta, false, {
-            query: '',
-            language: this.state.query!.language,
-          })
-        }
+        onEditSavedFilter={this.onEditSavedFilter}
       >
         {(list) => list}
       </SavedQueryManagementComponent>
@@ -764,6 +770,7 @@ class SearchBarUI extends Component<SearchBarProps, State> {
               });
             }}
             onFilterBadgeSave={this.onFilterBadgeSave}
+            filtersToEdit={this.state.filtersToEdit}
           />
         </div>
       );
