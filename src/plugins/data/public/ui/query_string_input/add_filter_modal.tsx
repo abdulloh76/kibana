@@ -29,6 +29,11 @@ import {
   EuiText,
   EuiIcon,
   EuiFieldText,
+  EuiDragDropContext,
+  EuiDroppable,
+  EuiDraggable,
+  DropResult,
+  ResponderProvided,
 } from '@elastic/eui';
 import { XJsonLang } from '@kbn/monaco';
 import { i18n } from '@kbn/i18n';
@@ -145,6 +150,67 @@ export function AddFilterModal({
       relationship: undefined,
     },
   ]);
+
+  const onDragEnd = useCallback(
+    (result: DropResult, provided: ResponderProvided) => {
+      if (!result.destination) return;
+
+      const [sourceGroup, sourceSubGroup, sourceId] = result.draggableId.split('-');
+      const [destGroup, destSubGroup] = result.destination.droppableId.split('-');
+      const targetIndex = localFilters.findIndex((f) => f.id === +sourceId);
+
+      let updatedFilters = [...localFilters];
+
+      const [reorderingItem] = updatedFilters.splice(targetIndex, 1);
+      const insertIndex = updatedFilters.findIndex(
+        (f) => f.groupId === +destGroup && f.subGroupId === +destSubGroup
+      );
+      updatedFilters.splice(insertIndex, 0, reorderingItem);
+
+      updatedFilters = localFilters.map((f, idx) => {
+        if (idx === targetIndex) {
+          const updatedTarget = {
+            ...f,
+            subGroupId: +destSubGroup,
+            relationship: undefined,
+            id: idx,
+          };
+          if (+destSubGroup === 1)
+            // if inserting to the root it has to be with new filter group
+            return {
+              ...updatedTarget,
+              groupId:
+                Math.max.apply(
+                  Math,
+                  localFilters.map((lcFilter) => lcFilter.groupId)
+                ) + 1,
+            };
+          return { ...updatedTarget, groupId: +destGroup };
+        }
+        return { ...f, id: idx };
+      });
+
+      if (
+        updatedFilters[targetIndex - 1] &&
+        updatedFilters[targetIndex - 1].groupId === updatedFilters[targetIndex].groupId &&
+        updatedFilters[targetIndex - 1].subGroupId === updatedFilters[targetIndex].subGroupId
+      )
+        // give relationship of moved filter to the filter before in the source
+        updatedFilters[targetIndex - 1].relationship = updatedFilters[targetIndex].relationship;
+
+      setLocalFilters(updatedFilters);
+      console.log(updatedFilters);
+    },
+    [localFilters]
+  );
+
+  const onDragOverGroup = useCallback(
+    (event: React.DragEvent<HTMLDivElement>, groupId, subGroupId) => {
+      event.preventDefault();
+      console.log('on drag over to group', groupId, subGroupId);
+    },
+    []
+  );
 
   useEffect(() => {
     const fetchQueries = async () => {
@@ -500,14 +566,22 @@ export function AddFilterModal({
                 : groupsCount === 1 && subGroup.length > 1
                 ? 'kbnQueryBar__filterModalGroups'
                 : '';
-            return (
-              <>
-                <div className={classNames(classes)}>
-                  {subGroup.map((localfilter, index) => {
-                    return (
-                      <>
+
+            const group = subGroup.map((localfilter, index) => {
+              return (
+                <>
+                  <EuiDraggable
+                    spacing="s"
+                    key={localfilter.id}
+                    index={Number(localfilter.id)}
+                    draggableId={`${localfilter.groupId}-${localfilter.subGroupId}-${localfilter.id}`}
+                    customDragHandle={true}
+                    hasInteractiveChildren={true}
+                  >
+                    {(provided) => (
+                      <EuiPanel paddingSize="s">
                         <EuiFlexGroup alignItems="center">
-                          <EuiFlexItem grow={false}>
+                          <EuiFlexItem grow={false} {...provided.dragHandleProps}>
                             <EuiIcon type="grab" size="s" />
                           </EuiFlexItem>
 
@@ -520,6 +594,7 @@ export function AddFilterModal({
                               </EuiFlexItem>
                             </EuiFlexGroup>
                           </EuiFlexItem>
+
                           <EuiFlexItem grow={false}>
                             <EuiFlexGroup responsive={false} justifyContent="center">
                               {subGroup.length < 2 && (
@@ -568,6 +643,12 @@ export function AddFilterModal({
                                       filtersOnGroup.length > 2
                                         ? localfilter?.subGroupId ?? 0
                                         : (localfilter?.subGroupId ?? 0) + 1;
+                                    // const subGroupId =
+                                    //   filtersOnGroup.length > 2
+                                    //     ? localfilter?.subGroupId ?? 0
+                                    //     : filtersOnGroup.length > 1
+                                    //     ? (localfilter?.subGroupId ?? 0) + 1
+                                    //     : 1;
                                     const updatedLocalFilter = {
                                       ...localfilter,
                                       relationship: 'AND',
@@ -634,33 +715,48 @@ export function AddFilterModal({
                             </EuiFlexGroup>
                           </EuiFlexItem>
                         </EuiFlexGroup>
+                      </EuiPanel>
+                    )}
+                  </EuiDraggable>
 
-                        {localfilter.relationship &&
-                          localfilter.relationship === 'OR' &&
-                          subGroup.length === 0 && (
-                            <>
-                              <EuiFlexGroup gutterSize="none" responsive={false}>
-                                <EuiFlexItem>
-                                  <EuiHorizontalRule margin="s" />
-                                </EuiFlexItem>
-                                <EuiFlexItem grow={false}>
-                                  <EuiText
-                                    color="subdued"
-                                    className="kbnQueryBar__filterModalORText"
-                                  >
-                                    OR
-                                  </EuiText>
-                                </EuiFlexItem>
-                                <EuiFlexItem>
-                                  <EuiHorizontalRule margin="s" />
-                                </EuiFlexItem>
-                              </EuiFlexGroup>
-                            </>
-                          )}
+                  {localfilter.relationship &&
+                    localfilter.relationship === 'OR' &&
+                    subGroup.length === 0 && (
+                      <>
+                        <EuiFlexGroup gutterSize="none" responsive={false}>
+                          <EuiFlexItem>
+                            <EuiHorizontalRule margin="s" />
+                          </EuiFlexItem>
+                          <EuiFlexItem grow={false}>
+                            <EuiText color="subdued" className="kbnQueryBar__filterModalORText">
+                              OR
+                            </EuiText>
+                          </EuiFlexItem>
+                          <EuiFlexItem>
+                            <EuiHorizontalRule margin="s" />
+                          </EuiFlexItem>
+                        </EuiFlexGroup>
                       </>
-                    );
-                  })}
-                </div>
+                    )}
+                </>
+              );
+            });
+
+            const groupClassName = subGroup[0].subGroupId! > 1 ? 'should-have-handler' : '';
+            return (
+              <>
+                {subGroup[0].subGroupId! > 1 ? (
+                  <div
+                    className={`${groupClassName} ${classNames(classes)}`}
+                    onDragOver={(e: React.DragEvent<HTMLDivElement>) =>
+                      onDragOverGroup(e, subGroup[0].groupId, subGroup[0].subGroupId)
+                    }
+                  >
+                    {group}
+                  </div>
+                ) : (
+                  <div className={classNames(classes)}>{group}</div>
+                )}
                 <>
                   {subGroup.length > 0 && subGroupIdx !== subGroups.length - 1 && (
                     <>
@@ -687,7 +783,13 @@ export function AddFilterModal({
       );
       GroupComponent.push(temp);
     }
-    return GroupComponent;
+    return (
+      <EuiDragDropContext onDragEnd={onDragEnd}>
+        <EuiDroppable droppableId="root" spacing="s" type="root-drop">
+          {GroupComponent}
+        </EuiDroppable>
+      </EuiDragDropContext>
+    );
   };
 
   return (
